@@ -21,36 +21,36 @@ altPresse = False
 f1Pressed = False
 f2Pressed = False
 f3Pressed = False
-f5Pressed = False
+f4Pressed = False
 
 # 创建一个顶层窗口
 root = tk.Tk()
 root.withdraw()  # 隱藏主視窗
 
 def keyboardPressFunction(key):
-    global altPresse,f1Pressed,f2Pressed,f3Pressed,f5Pressed,mainWindowHandle
+    global altPresse,f1Pressed,f2Pressed,f3Pressed,f4Pressed,mainWindowHandle
     if key == keyboard.Key.alt_l and altPresse == False:
         print('按了ALT')
         altPresse = True
-    elif key == keyboard.Key.f1 and f1Pressed == False:
+    elif key == keyboard.KeyCode.from_char('1') and f1Pressed == False:
         f1Pressed = True
         if altPresse == True:
-            print('按了ALT+F1')
+            print('按了ALT+1')
             melonTikectClickOrderButton() # 自動點預定
-    elif key == keyboard.Key.f2  and f2Pressed == False:
+    elif key == keyboard.KeyCode.from_char('2') and f2Pressed == False:
         f2Pressed = True
         if altPresse == True:
-            print('按了ALT+F2')
+            print('按了ALT+2')
             melonTikectBuyTicketInfo() # 自動輸入購票資訊
-    elif key == keyboard.Key.f3  and f3Pressed == False:
+    elif key == keyboard.KeyCode.from_char('3') and f3Pressed == False:
         f3Pressed = True
         if altPresse == True:
-            print('按了ALT+F3，切回主視窗')
+            print('按了ALT+3，切回主視窗')
             driver.switch_to.window(mainWindowHandle)
-    elif key == keyboard.Key.f5  and f5Pressed == False:
-        f5Pressed = True
+    elif key == keyboard.KeyCode.from_char('4') and f4Pressed == False:
+        f4Pressed = True
         if altPresse == True:
-            print('按了ALT+f5')        
+            print('按了ALT+4')        
             messagebox.showinfo('123','你關閉了程式')
             driver.quit()
             root.destroy()
@@ -58,18 +58,18 @@ def keyboardPressFunction(key):
                  
 
 def keyboardReleaseFunction(key):
-    global altPresse,f1Pressed,f2Pressed,f3Pressed,f5Pressed
+    global altPresse,f1Pressed,f2Pressed,f3Pressed,f4Pressed
     if key == keyboard.Key.alt_l and altPresse == True:
         # print('鬆開CTRL')
         altPresse = False 
-    elif key == keyboard.Key.f1 and f1Pressed == True:
+    elif key == keyboard.KeyCode.from_char('1') and f1Pressed == True:
         f1Pressed =False
-    elif key == keyboard.Key.f2 and f2Pressed == True: 
+    elif key == keyboard.KeyCode.from_char('2') and f2Pressed == True: 
         f2Pressed =False
-    elif key == keyboard.Key.f3 and f3Pressed == True: 
+    elif key == keyboard.KeyCode.from_char('3') and f3Pressed == True: 
         f3Pressed =False        
-    elif key == keyboard.Key.f5 and f5Pressed == True: 
-        f5Pressed =False            
+    elif key == keyboard.KeyCode.from_char('4') and f4Pressed == True: 
+        f4Pressed =False            
 
 
 def startKeyboardListener():
@@ -114,6 +114,12 @@ def melonTikectClickOrderButton():
 
 def melonTikectBuyTicketInfo():
     try:
+        WebDriverWait(driver, 10).until(EC.number_of_windows_to_be(2))
+        for handle in driver.window_handles:
+            if handle != mainWindowHandle:
+                print('Switch to second window.')
+                driver.switch_to.window(handle)
+                break
         driver.switch_to.frame("oneStopFrame")
         # 設置最長等待時間（例如10秒），直到該元素出現
         telInput = findHTMLDomElement((By.ID, 'tel'))
