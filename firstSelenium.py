@@ -112,7 +112,7 @@ def keyboardPressFunction(key):
         f2Pressed = True
         if altPresse == True:
             print('按了ALT+2')
-            melonTikectBuyTicketInfo(2) # 自動輸入購票資訊
+            melonTikectBuyTicketInfo(2,2) # 自動輸入購票資訊
     elif key == keyboard.KeyCode.from_char('3') and f3Pressed == False:
         f3Pressed = True
         if altPresse == True:
@@ -184,7 +184,7 @@ def melonTikectClickOrderButton():
         print("Element not found.")
 
 # version 1:自動輸入資訊 2:自動挑選最佳位子，並自動輸入資訊
-def melonTikectBuyTicketInfo(version=1):
+def melonTikectBuyTicketInfo(version=1,buyTicketNum=1):
     try:
         WebDriverWait(driver, 10).until(EC.number_of_windows_to_be(2))
         for handle in driver.window_handles:
@@ -193,6 +193,10 @@ def melonTikectBuyTicketInfo(version=1):
                 driver.switch_to.window(handle)
                 break
         driver.switch_to.frame("oneStopFrame")
+        finishSeatJob = False
+        clickTicketNum = 0
+        
+        
 
         if version == 2:
             # 先蒐集座位標籤，但我們按照右側的順序來定義最佳到最差的位置
@@ -200,79 +204,102 @@ def melonTikectBuyTicketInfo(version=1):
             # 有兩種售票方式 divGradeSummary和partSeatGrade
             # divGradeSummary代表要展開才能選座位
             # partSeatGrade直接選右邊的座位
-            seatList = findHTMLDomElement((By.CSS_SELECTOR,'tbody#partSeatGrade th.seat_color em.seat_color'),0.1,0.1)
+            seatList = findHTMLDomElement((By.CSS_SELECTOR,'partSeatGrade'),0.5,0.5)
             if seatList is None:
-                fininshJob = False
                 seatList = findHTMLDomElement((By.ID,'divGradeSummary'),0.1,0.1)
+                # 是否搜尋所有座位，還是根據頁面上的剩餘座位數量決定是否選位
+                clickAllSeatBtn = True 
                 # 定位該tbody內的所有tr元素
                 rows = seatList[0].find_elements(By.TAG_NAME,"tr")
                 groupedRows = [rows[i:i+2] for i in range(0, len(rows), 2)]
 
-                for group in groupedRows:
-                    if fininshJob == True:
-                        break
-                    colorDiffCache = {}
-                    # 展開座位列表
-                    group[0].click()
-                    # 取得座位顏色
-                    seatColor = group[0].find_element(By.TAG_NAME,'em').value_of_css_property('background-color')
-                    seatColorRgb = rgbStringToRGB(seatColor)
-                    # 測試是否可以讀到第二個狀態列表，還是需要重新讀取
-                    ticketLiBtnList = group[1].find_elements(By.TAG_NAME,"li")
-                    for ticketLiBtn in ticketLiBtnList:
-                        if fininshJob == True:
+                for i in range(2):
+                    print(f'第{i+1}次開始搜尋是否有座位')
+                    for group in groupedRows:
+                        if finishSeatJob == True:
                             break
-                        # 檢查是否有座位
-                        ticketNum = ticketLiBtn.find_element(By.TAG_NAME,'strong')
-                        if ticketNum.text != '0':
-                            # 有座位，點擊
-                            ticketLiBtn.click()
-                            # 展開詳細座位列表，並搜尋座位色碼，進行購票
-                            ticketBlock = findHTMLDomElement((By.ID,'ez_canvas'))
-                            rectElements = ticketBlock[0].find_elements(By.TAG_NAME,'rect')
+                        # colorDiffCache = {}
+                        # 展開座位列表
+                        group[0].click()
+                        # 取得座位顏色
+                        # seatColor = group[0].find_element(By.TAG_NAME,'em').value_of_css_property('background-color')
+                        # seatColorRgb = rgbStringToRGB(seatColor)
+                        # 測試是否可以讀到第二個狀態列表，還是需要重新讀取
+                        ticketLiBtnList = group[1].find_elements(By.TAG_NAME,"li")
+                        for ticketLiBtn in ticketLiBtnList:
+                            if finishSeatJob == True:
+                                break
+                            # 檢查是否有座位
+                            ticketNum = ticketLiBtn.find_element(By.TAG_NAME,'strong')
+                            if ticketNum.text != '0' or clickAllSeatBtn == True:
+                                # 有座位，點擊
+                                ticketLiBtn.click()
+                                # 展開詳細座位列表，並搜尋座位色碼，進行購票
+                                ticketBlock = findHTMLDomElement((By.ID,'ez_canvas'),3)
+                                rectElements = ticketBlock[0].find_elements(By.TAG_NAME,'rect')
 
-                            for rect in rectElements:
-                                rectColor = rect.get_attribute('fill')
+                                for index,rect in enumerate(rectElements):
+                                    rectColor = rect.get_attribute('fill')
 
-                                # fill可能沒有設定任何顏色，或是設定為none
-                                if rectColor == 'none':
-                                    continue
-
-                                if rectColor == '#DDDDDD':
-                                    continue
-
-                                # 若色碼相同，則存快取字典中取出，不再重複比對
-                                if rectColor in colorDiffCache:
-                                    colorDiffPercent = colorDiffCache[rectColor]
-                                else:
-                                    r, g, b = hex_to_rgb(rectColor)
-                                    colorDiffPercent = rgbPercent((r, g, b), seatColorRgb)
-                                    if colorDiffPercent is None:
+                                    # fill可能沒有設定任何顏色，或是設定為none
+                                    if rectColor == 'none':
                                         continue
-                                    colorDiffCache[rectColor] = colorDiffPercent
 
-                                # print('#1')
-                                # print(rgb_to_hex(seatColor),rectColor)
-                                # print((r, g, b), seatColorRgb)
-                                # print(colorDiffPercent)
-                                # print('#2')
-                                # 比對顏色是否小於20，超過20視為不同顏色，因為melon的可選座位色碼會浮動調整
-                                if colorDiffPercent < 0.2:
+                                    if rectColor == '#DDDDDD':
+                                        continue
+
+                                    # 若色碼相同，則存快取字典中取出，不再重複比對
+                                    # if rectColor in colorDiffCache:
+                                    #     colorDiffPercent = colorDiffCache[rectColor]
+                                    # else:
+                                    #     r, g, b = hex_to_rgb(rectColor)
+                                    #     colorDiffPercent = rgbPercent((r, g, b), seatColorRgb)
+                                    #     if colorDiffPercent is None:
+                                    #         continue
+                                    #     colorDiffCache[rectColor] = colorDiffPercent
+
+                                    # print('#1')
+                                    # print(rgb_to_hex(seatColor),rectColor)
+                                    # print((r, g, b), seatColorRgb)
+                                    # print(colorDiffPercent)
+                                    # print('#2')
+                                    # 比對顏色是否小於20，超過20視為不同顏色，因為melon的可選座位色碼會浮動調整
+                                    # if colorDiffPercent < 0.2:
                                     rect.click()
-                                    nextTicketSelectionBtn = findHTMLDomElement((By.ID,'nextTicketSelection'),0.3,0.3)
-                                    nextTicketSelectionBtn.click()
-                                    nextPaymentBtn = findHTMLDomElement((By.ID,'nextPayment'),0.3,0.3)
-                                    nextPaymentBtn.click()
-                                    group[0].click()
-                                    # 完成購票，跳出查詢位置的迴圈
-                                    if fininshJob == True:
+
+                                    # 購買指定的票券數量
+                                    clickTicketNum += 1
+
+                                    if clickTicketNum == buyTicketNum:
+                                        nextTicketSelectionBtn = findHTMLDomElement((By.ID,'nextTicketSelection'),0.3,0.3)
+                                        nextTicketSelectionBtn[0].click()
+                                        nextPaymentBtn = findHTMLDomElement((By.ID,'nextPayment'))
+                                        # 找不到付款按鈕，代表該位置已經被搶走了，繼續找下一個位置
+                                        if nextPaymentBtn is None:
+                                            # 購票失敗，繼續找兩個位置
+                                            clickTicketNum = 0
+                                            continue
+
+                                        nextPaymentBtn[0].click()
+                                        # 完成購票，跳出查詢位置的迴圈
+                                        finishSeatJob = True
                                         break
-                    # 關閉座位列表
-                    group[0].click()
+                        # 關閉座位列表
+                        if finishSeatJob == False:
+                            group[0].click()
             else:
-            # 沒有找到區域下拉按鈕，直接選擇座位
+                # 刷新按鈕，因為這種購票方式不存在選位機制，當找不到座位時要點刷新重新讀取API，取得最新的座位資訊
+                refreshSeatBtn = findHTMLDomElement((By.ID,'btnReloadSchedule'))
+                # 沒有找到區域下拉按鈕，直接選擇座位
+                ticketBlock = findHTMLDomElement((By.ID,'ez_canvas'),3)
+                rectElements = ticketBlock[0].find_elements(By.TAG_NAME,'rect')
                 print('1')
-        return None
+
+
+        if finishSeatJob == False:
+            messagebox.showinfo('找不到座位','嘗試刷新了10次座位列表，但找不到座位')
+            return None
+
         # 輸入付款資料
         telInput = findHTMLDomElement((By.ID, 'tel'))
         creditCradRadio = findHTMLDomElement((By.ID, 'payMethodCode001'))
