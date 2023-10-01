@@ -5,6 +5,7 @@ from selenium.webdriver.support.ui import WebDriverWait, Select
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import TimeoutException
 from pynput import keyboard
+from pynput.keyboard import Key
 from tkinter import messagebox
 import re
 from colormath.color_objects import sRGBColor, LabColor
@@ -12,6 +13,10 @@ from colormath.color_conversions import convert_color
 from colormath.color_diff import delta_e_cie2000
 import numpy
 from collections import defaultdict
+from selenium.webdriver.chrome.service import Service as ChromeService
+from webdriver_manager.chrome import ChromeDriverManager
+from datetime import datetime
+
 
 ## 編譯說明
 #1 
@@ -28,7 +33,7 @@ setattr(numpy, "asscalar", patch_asscalar)
 
 
 ## 按鍵控制區塊if key.char == '1':
-altPresse = False
+ctrlOrCmdPressed = False
 f1Pressed = False
 f2Pressed = False
 f3Pressed = False
@@ -100,48 +105,72 @@ def hex_to_rgb(hex_value):
     return r, g, b    
 
 def keyboardPressFunction(key):
-    global altPresse,f1Pressed,f2Pressed,f3Pressed,f4Pressed,mainWindowHandle
-    if key == keyboard.Key.alt_l and altPresse == False:
-        # print('按了ALT')
-        altPresse = True
-    elif key == keyboard.KeyCode.from_char('1') and f1Pressed == False:
-        f1Pressed = True
-        if altPresse == True:
-            print('按了ALT+1')
-            melonTikectClickOrderButton() # 自動點預定
-    elif key == keyboard.KeyCode.from_char('2') and f2Pressed == False:
-        f2Pressed = True
-        if altPresse == True:
-            print('按了ALT+2')
-            melonTikectBuyTicketInfo(2,2) # 自動輸入購票資訊
-    elif key == keyboard.KeyCode.from_char('3') and f3Pressed == False:
-        f3Pressed = True
-        if altPresse == True:
-            print('按了ALT+3，切回主視窗')
-            driver.switch_to.window(mainWindowHandle)
-    elif key == keyboard.KeyCode.from_char('4') and f4Pressed == False:
-        f4Pressed = True
-        if altPresse == True:
-            print('按了ALT+4')        
-            messagebox.showinfo('123','你關閉了程式')
-            driver.quit()
-            root.destroy()
-            exit()   
+    global ctrlOrCmdPressed,f1Pressed,f2Pressed,f3Pressed,f4Pressed,mainWindowHandle
+    if key == Key.ctrl_l or key == Key.cmd:
+        print('按下ctrl或cmd')
+        ctrlOrCmdPressed = True
+
+    if (hasattr(key, 'char') and key.char == '1') or str(key) == r"49":
+        print('按下1')
+        f1Pressed = True        
+
+        if ctrlOrCmdPressed == True:
+            print("Ctrl (or Cmd) + 1 pressed!")
+
+    # if (key == keyboard.Key.ctrl or keyboard.Key.cmd) and ctrlOrCmdPressed == False:
+    #     print('按了CTRL')
+    #     ctrlOrCmdPressed = True
+
+    # elif key == keyboard.KeyCode.from_char('1') and f1Pressed == False:
+    #     f1Pressed = True
+    #     print('#1')
+    #     if ctrlOrCmdPressed == True:
+    #         print('按了CTRL+1')
+    #         # melonTikectClickOrderButton() # 自動點預定
+
+    # elif key == keyboard.KeyCode.from_char('2') and f2Pressed == False:
+    #     f2Pressed = True
+    #     if ctrlOrCmdPressed == True:
+    #         print('按了CTRL+2')
+    #         # melonTikectBuyTicketInfo(2,1) # 自動輸入購票資訊
+
+    # elif key == keyboard.KeyCode.from_char('3') and f3Pressed == False:
+    #     f3Pressed = True
+    #     if ctrlOrCmdPressed == True:
+    #         print('按了CTRL+3')
+    #         driver.switch_to.window(mainWindowHandle)
+
+    # elif key == keyboard.KeyCode.from_char('4') and f4Pressed == False:
+    #     f4Pressed = True
+    #     if ctrlOrCmdPressed == True:
+    #         print('按了CTRL+4')        
+    #         messagebox.showinfo('123','你關閉了程式')
+    #         driver.quit()
+    #         root.destroy()
+    #         exit()   
                  
 
 def keyboardReleaseFunction(key):
-    global altPresse,f1Pressed,f2Pressed,f3Pressed,f4Pressed
-    if key == keyboard.Key.alt_l and altPresse == True:
-        # print('鬆開CTRL')
-        altPresse = False 
-    elif key == keyboard.KeyCode.from_char('1') and f1Pressed == True:
-        f1Pressed =False
-    elif key == keyboard.KeyCode.from_char('2') and f2Pressed == True: 
-        f2Pressed =False
-    elif key == keyboard.KeyCode.from_char('3') and f3Pressed == True: 
-        f3Pressed =False        
-    elif key == keyboard.KeyCode.from_char('4') and f4Pressed == True: 
-        f4Pressed =False            
+    global ctrlOrCmdPressed,f1Pressed,f2Pressed,f3Pressed,f4Pressed
+    if key == Key.ctrl_l or key == Key.cmd:
+        print('鬆開ctrl或cmd')
+        ctrlOrCmdPressed = False
+
+    if hasattr(key, 'char') and key.char == '1':
+        print('鬆開1')
+        f1Pressed = False        
+        
+    # if (key == keyboard.Key.ctrl or keyboard.Key.cmd) and ctrlOrCmdPressed == False:
+    #     # print('鬆開CTRL')
+    #     ctrlOrCmdPressed = False 
+    # if key == keyboard.KeyCode.from_char('1') and f1Pressed == True:
+    #     f1Pressed =False
+    # elif key == keyboard.KeyCode.from_char('2') and f2Pressed == True: 
+    #     f2Pressed =False
+    # elif key == keyboard.KeyCode.from_char('3') and f3Pressed == True: 
+    #     f3Pressed =False        
+    # elif key == keyboard.KeyCode.from_char('4') and f4Pressed == True: 
+    #     f4Pressed =False            
 
 
 def startKeyboardListener():
@@ -160,7 +189,7 @@ def melonTikectClickOrderButton():
         reservationBtn = findHTMLDomElement((By.CLASS_NAME, 'reservationBtn'),3600)
         dateTypeList = findHTMLDomElement((By.CLASS_NAME, 'type_list'))
         ## 特別注意要改這邊的時間單位
-        dateBtn = findHTMLDomElement((By.CSS_SELECTOR, 'li[data-perfday="20230924"] button'))
+        dateBtn = findHTMLDomElement((By.CSS_SELECTOR, 'li[data-perfday="20231119"] button'))
         ## 特別注意要改這邊的時間單位
         
         # 此時元素已確認存在
@@ -186,6 +215,7 @@ def melonTikectClickOrderButton():
 
 # version 1:自動輸入資訊 2:自動挑選最佳位子，並自動輸入資訊
 def melonTikectBuyTicketInfo(version=1,buyTicketNum=1):
+    global txtFileParams
     try:
         WebDriverWait(driver, 10).until(EC.number_of_windows_to_be(2))
         for handle in driver.window_handles:
@@ -196,8 +226,6 @@ def melonTikectBuyTicketInfo(version=1,buyTicketNum=1):
         driver.switch_to.frame("oneStopFrame")
         finishSeatJob = False
         clickTicketNum = 0
-        
-        
 
         if version == 2:
             # 先蒐集座位標籤，但我們按照右側的順序來定義最佳到最差的位置
@@ -205,7 +233,7 @@ def melonTikectBuyTicketInfo(version=1,buyTicketNum=1):
             # 有兩種售票方式 divGradeSummary和partSeatGrade
             # divGradeSummary代表要展開才能選座位
             # partSeatGrade直接選右邊的座位
-            seatList = findHTMLDomElement((By.CSS_SELECTOR,'partSeatGrade'),0.5,0.5)
+            seatList = findHTMLDomElement((By.ID,'partSeatGrade'),0.5,0.5)
             if seatList is None:
                 seatList = findHTMLDomElement((By.ID,'divGradeSummary'),0.1,0.1)
                 # 是否搜尋所有座位，還是根據頁面上的剩餘座位數量決定是否選位
@@ -290,107 +318,111 @@ def melonTikectBuyTicketInfo(version=1,buyTicketNum=1):
                         # 關閉座位列表
                         if finishSeatJob == False:
                             group[0].click()
-            else:
-                # 先找出票種的顏色
-                seatColorList = []
-                seatDictionary = defaultdict(list)
-                colorDiffCache = {}
-                row = seatList[0].find_elements(By.TAG_NAME,"tr")
-                for seatColor in enumerate(row):
-                    seatColorList.append(seatColor.find_element(By.TAG_NAME,'em').value_of_css_property('background-color'))
+            # else:
+            #     # 先找出票種的顏色
+            #     seatColorList = []
+            #     seatDictionary = defaultdict(list)
+            #     colorDiffCache = {}
+            #     row = seatList[0].find_elements(By.TAG_NAME,"tr")
+            #     for seatColor in row:
+            #         seatColorList.append(seatColor.find_element(By.TAG_NAME,'em').value_of_css_property('background-color'))
 
-                # 沒有找到區域下拉按鈕，直接選擇座位
-                # 將所有rect標籤取出，利用XY座標排序，避免買到縱向的位置
-                # 以Y座標越小越前面，X座標相等代表同一列
-                for i in range(2):
-                    if finishSeatJob == True:
-                        break
-                    print(f'第{i+1}次開始搜尋是否有座位')
-                    ticketBlock = findHTMLDomElement((By.ID,'ez_canvas'),3)
-                    rectElements = ticketBlock[0].find_elements(By.TAG_NAME,'rect')
+            #     # 沒有找到區域下拉按鈕，直接選擇座位
+            #     # 將所有rect標籤取出，利用XY座標排序，避免買到縱向的位置
+            #     # 以Y座標越小越前面，X座標相等代表同一列
+            #     for i in range(2):
+            #         if finishSeatJob == True:
+            #             break
+            #         print(f'第{i+1}次開始搜尋是否有座位')
+            #         ticketBlock = findHTMLDomElement((By.ID,'ez_canvas'),3)
+            #         rectElements = ticketBlock[0].find_elements(By.TAG_NAME,'rect')
 
-                    # 將座位儲存成Y軸的字典
-                    for index,rect in enumerate(rectElements):
-                        # 取出XY座標與座位色碼，若讀不到色碼或已經售出，則不存入
-                        rectColor = rect.get_attribute('fill')
-                        # fill可能沒有設定任何顏色，或是設定為none
-                        if rectColor == 'none':
-                            continue
+            #         # 將座位儲存成Y軸的字典
+            #         for index,rect in enumerate(rectElements):
+            #             # 取出XY座標與座位色碼，若讀不到色碼或已經售出，則不存入
+            #             rectColor = rect.get_attribute('fill')
+            #             # fill可能沒有設定任何顏色，或是設定為none
+            #             if rectColor == 'none':
+            #                 continue
 
-                        rectXAxis = rect.get_attribute('x')
-                        rectYAxis = rect.get_attribute('y')
-                        seatDictionary[rectYAxis].append({'x':rectXAxis,'y':rectYAxis,'color':rectColor,'webEelement':rect})
+            #             rectXAxis = rect.get_attribute('x')
+            #             rectYAxis = rect.get_attribute('y')
+            #             seatDictionary[rectYAxis].append({'x':rectXAxis,'y':rectYAxis,'color':rectColor,'webEelement':rect})
+            #         # 將每個Y軸再用X軸排序
+            #         for y, seatData in seatDictionary.items():
+            #             seatDictionary[y].sort(key=lambda d: (d['x']))
 
-                    # 將每個Y軸再用X軸排序
-                    for y, seatData in seatDictionary.items():
-                        seatDictionary[y].sort(key=lambda d: (d['x']))
-
-                    # 計算每一列的平均距離，小於平均距離的視為鄰座，可以連著購買
-                    distances = defaultdict(lambda: {"sum": 0, "count": 0})
-                    for y, seatData in seatDictionary.items():
-                        prevSeat = 0
-                        for key,data in enumerate(seatData):
-                            if key > 0:
-                                distances[y]["sum"] += data['x'] - prevSeat
-                            distances[y]["count"] += 1
-                            prevSeat = data['x']
-                            if data["color"] == '#DDDDDD':
-                                seatDictionary[y].pop(key)
+            #         # 計算每一列的平均距離，小於平均距離的視為鄰座，可以連著購買
+            #         distances = defaultdict(lambda: {"sum": 0, "count": 0})
+            #         for y, seatData in seatDictionary.items():
+            #             prevSeat = 0
+            #             for key,data in enumerate(seatData):
+            #                 if key > 0:
+            #                     distances[y]["sum"] += data['x'] - prevSeat
+            #                 distances[y]["count"] += 1
+            #                 prevSeat = data['x']
+            #                 if data["color"] == '#DDDDDD':
+            #                     seatDictionary[y].pop(key)
                     
-                    averageDistances = {y: data["sum"]/data["count"] for y, data in distances.items()}
+            #         averageDistances = {y: data["sum"]/data["count"] for y, data in distances.items()}
 
-                    prevWebEelmentSeat = []
-                    # 根據色碼找票
-                    for seatColor in seatColorList:
-                        if finishSeatJob == True:
-                            break
-                        # 首先將色碼轉RGB
-                        seatColorRgb = rgbStringToRGB(seatColor)
-                        # 開始找座位
-                        for seatBlock in seatDictionary:
-                            # 比對座位色碼
-                            # 若色碼相同，則存快取字典中取出，不再重複比對
-                            if seatBlock['color'] in colorDiffCache:
-                                colorDiffPercent = colorDiffCache[seatBlock['color']]
-                            else:
-                                r, g, b = hex_to_rgb(seatBlock['color'])
-                                colorDiffPercent = rgbPercent((r, g, b), seatColorRgb)
-                                if colorDiffPercent is None:
-                                    continue
-                                colorDiffCache[seatBlock['color']] = colorDiffPercent
+            #         prevWebEelmentSeat = []
+            #         # 根據色碼找票
+            #         for seatColor in seatColorList:
+            #             if finishSeatJob == True:
+            #                 break
+            #             # 首先將色碼轉RGB
+            #             seatColorRgb = rgbStringToRGB(seatColor)
+            #             # 開始找座位
+            #             for seatBlock in seatDictionary:
+            #                 # 比對座位色碼
+            #                 # 若色碼相同，則存快取字典中取出，不再重複比對
+            #                 if seatBlock['color'] in colorDiffCache:
+            #                     colorDiffPercent = colorDiffCache[seatBlock['color']]
+            #                 else:
+            #                     r, g, b = hex_to_rgb(seatBlock['color'])
+            #                     colorDiffPercent = rgbPercent((r, g, b), seatColorRgb)
+            #                     if colorDiffPercent is None:
+            #                         continue
+            #                     colorDiffCache[seatBlock['color']] = colorDiffPercent
 
-                            # 如果只要買一張票，色碼相似就可以完成購買
-                            if buyTicketNum == 1:
-                                if colorDiffPercent < 15:
-                                    seatBlock['webEelement'].click()
-                                    nextTicketSelectionBtn = findHTMLDomElement((By.ID,'nextTicketSelection'),0.3,0.3)
-                                    nextTicketSelectionBtn[0].click()
-                                    nextPaymentBtn = findHTMLDomElement((By.ID,'nextPayment'))
-                                    # 找不到付款按鈕，代表該位置已經被搶走了，繼續找下一個位置
-                                    if nextPaymentBtn is None:
-                                        # 購票失敗，繼續找位置
-                                        continue
-                                    nextPaymentBtn[0].click()
-                                    # 完成購票，跳出查詢位置的迴圈
-                                    finishSeatJob = True
-                                    break
-                            else:
-                                # 要找到連號並可購買的座位
-                                if colorDiffPercent < 15:
-                                    # 第一個座位直接選
-                                    if clickTicketNum == 0:
-                                        seatBlock['webEelement'].click()
-                                        prevWebEelmentSeat.append(seatBlock)
-                                    else:
-                                        print('購買多張連號的票')
-                                        # 購買多張連號的票
-                                
-                    # 刷新按鈕，因為這種購票方式不存在選位機制，當找不到座位時要點刷新重新讀取API，取得最新的座位資訊
-                    refreshSeatBtn = findHTMLDomElement((By.ID,'btnReloadSchedule'))
-
-                
-                print('1')
-
+            #                 # 如果只要買一張票，色碼相似就可以完成購買
+            #                 if buyTicketNum == 1:
+            #                     if colorDiffPercent < 15:
+            #                         seatBlock['webEelement'].click()
+            #                         nextTicketSelectionBtn = findHTMLDomElement((By.ID,'nextTicketSelection'),0.3,0.3)
+            #                         nextTicketSelectionBtn[0].click()
+            #                         nextPaymentBtn = findHTMLDomElement((By.ID,'nextPayment'))
+            #                         # 找不到付款按鈕，代表該位置已經被搶走了，繼續找下一個位置
+            #                         if nextPaymentBtn is None:
+            #                             # 購票失敗，繼續找位置
+            #                             continue
+            #                         nextPaymentBtn[0].click()
+            #                         # 完成購票，跳出查詢位置的迴圈
+            #                         finishSeatJob = True
+            #                         break
+            #                 else:
+            #                     # 要找到連號並可購買的座位
+            #                     if colorDiffPercent < 15:
+            #                         # 第一個座位直接選
+            #                         if buyTicketNum == 0:
+            #                             seatBlock['webEelement'].click()
+            #                             prevWebEelmentSeat.append(seatBlock)
+            #                         else:
+            #                             print('購買多張連號的票')
+            #                             # 購買多張連號的票
+            #                             # 檢查這張座位的X軸和前一張座位的X軸是否小於平均距離
+            #                             if seatBlock['x'] - prevWebEelmentSeat[-1]['x'] <= averageDistances[seatBlock['y']]:
+            #                                 # 如果小於平均距離，則代表是連號的座位，可以購買
+            #                                 seatBlock['webEelement'].click()
+            #                                 prevWebEelmentSeat.append(seatBlock)
+            #                                 clickTicketNum += 1
+            #                                 # 如果把票買齊了，則跳出迴圈
+            #                                 if clickTicketNum == buyTicketNum:
+            #                                     finishSeatJob = True
+            #                                 break
+            #         # 刷新按鈕，因為這種購票方式不存在選位機制，當找不到座位時要點刷新重新讀取API，取得最新的座位資訊
+            #         refreshSeatBtn = findHTMLDomElement((By.ID,'btnReloadSchedule'))
 
             if finishSeatJob == False:
                 messagebox.showinfo('找不到座位','嘗試刷新了10次座位列表，但找不到座位，請重新搜尋座位')
@@ -402,18 +434,21 @@ def melonTikectBuyTicketInfo(version=1,buyTicketNum=1):
         chkAgreeAllBtn = findHTMLDomElement((By.ID, 'chkAgreeAll'))
         finalPaymentBtn = findHTMLDomElement((By.ID, 'btnFinalPayment'))
         
+        creditCrad = txtFileParams['credit_card']
+        creditCradType = {'VISA':0,'MASTER':1}
+        phone = txtFileParams['phone']
         # 輸入電話
-        telInput[0].send_keys('886928780630')
+        telInput[0].send_keys(phone)
         # 點選海外信用卡
         creditCradRadio[0].click()
         # 選擇信用卡類型
         creditCradSelector = findHTMLDomElement((By.ID, 'cardCode'))
-        creditCradSelectorOption = Select(creditCradSelector[0])
-        creditCradSelectorOption.select_by_value("FOREIGN_VISA")
+        creditCradSelectorOption = Select(creditCradSelector[creditCradType['creditCrad']])
+        creditCradSelectorOption.select_by_value("FOREIGN_"+creditCrad)
         # 同意退費規則
         chkAgreeAllBtn[0].click()
         # 進行結算
-        finalPaymentBtn[0].click()
+        # finalPaymentBtn[0].click()
     except TimeoutException:
         print("Element not found.")
 
@@ -425,6 +460,31 @@ def findHTMLDomElement(elementLocator,timer=2,poll_frequency=0.5):
     except TimeoutException:
         print(f"Element {elementLocator} not found.")
         return None
+    
+## 檢查必要的資料是否有輸入正確
+txtFileParams = {}
+try:
+    with open('payment_info.txt', 'r', encoding='utf-8') as file:
+        for line in file:
+            # 不讀取開頭結尾是#的文字，避免註解被使用
+            if not line.strip().startswith('#'):
+                key, value = line.strip().split('=')
+                if key in ['phone','credit_card']:
+                    txtFileParams[key] = value
+except FileNotFoundError:
+    messagebox.showinfo('缺少txt檔案','無法自動輸入訂購人資訊')
+    root.destroy()
+    exit()
+
+if 'phone' not in txtFileParams or 'credit_card' not in txtFileParams:
+    messagebox.showinfo('缺少訂購資訊','請先確認信用卡/手機是否照範例設定')
+    root.destroy()
+    exit()
+
+if txtFileParams['credit_card'] not in ['VISA','MASTER']:
+    messagebox.showinfo('信用卡僅支援VISA/MASTER','請先確認信用卡是否照範例設定')
+    root.destroy()
+    exit()
 
 ## chrmoe模擬區塊
 options = webdriver.ChromeOptions() 
@@ -440,7 +500,8 @@ options.add_experimental_option("prefs", prefs)
 
 url = 'https://tkglobal.melon.com/main/index.htm?langCd=CN&'
 
-driver = webdriver.Chrome(options=options)
+driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()),options=options)
+# driver = webdriver.Chrome()
 driver.get(url)
 # 主視窗
 mainWindowHandle = driver.current_window_handle 
