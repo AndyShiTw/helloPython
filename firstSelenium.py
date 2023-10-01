@@ -1,3 +1,4 @@
+import threading
 import tkinter as tk
 from selenium import webdriver
 from selenium.webdriver.support import expected_conditions as EC
@@ -5,7 +6,6 @@ from selenium.webdriver.support.ui import WebDriverWait, Select
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import TimeoutException
 from pynput import keyboard
-from pynput.keyboard import Key
 from tkinter import messagebox
 import re
 from colormath.color_objects import sRGBColor, LabColor
@@ -31,17 +31,8 @@ def patch_asscalar(a):
 
 setattr(numpy, "asscalar", patch_asscalar)
 
-
-## 按鍵控制區塊if key.char == '1':
-ctrlOrCmdPressed = False
-f1Pressed = False
-f2Pressed = False
-f3Pressed = False
-f4Pressed = False
-
-# 创建一个顶层窗口
-root = tk.Tk()
-root.withdraw()  # 隱藏主視窗
+# 當前已按下的按鍵集合
+currentKeys = set()
 
 def rgbStringToRGB(rgbString):
     match = re.match(r'rgba\((\d+),\s*(\d+),\s*(\d+),\s*(\d+(\.\d+)?)\)', rgbString)
@@ -105,17 +96,38 @@ def hex_to_rgb(hex_value):
     return r, g, b    
 
 def keyboardPressFunction(key):
-    global ctrlOrCmdPressed,f1Pressed,f2Pressed,f3Pressed,f4Pressed,mainWindowHandle
-    if key == Key.ctrl_l or key == Key.cmd:
-        print('按下ctrl或cmd')
-        ctrlOrCmdPressed = True
+    if key == keyboard.Key.esc:
+        return False  # 結束監聽
+    
+    # 記錄這個按鈕按過，不要一直重複監聽，避免重複執行，直到他被放開
+    if key not in currentKeys:
+        # 這是新的鍵被按下
+        print(f"{key} 被按下")
+        currentKeys.add(key)    
 
-    if (hasattr(key, 'char') and key.char == '1') or str(key) == r"49":
-        print('按下1')
-        f1Pressed = True        
 
-        if ctrlOrCmdPressed == True:
-            print("Ctrl (or Cmd) + 1 pressed!")
+    # if any([key in COMBO for COMBO in hotkeys]):
+    #     currentKeys.add(key)
+    #     if any(all(k in currentKeys for k in COMBO) for COMBO in hotkeys):
+    #         execute()
+
+    # if any([key in hotkey for hotkey in hotkeys]):
+    #     currentKeys.add(key)
+    #     # 檢查是否匹配任何熱鍵組合
+    #     for hotkey, action in hotkeys.items():
+    #         if hotkey <= currentKeys:
+    #             action()  # 執行對應的功能
+
+
+    # global ctrlOrCmdPressed,f1Pressed,f2Pressed,f3Pressed,f4Pressed,mainWindowHandle
+    # if key == Key.ctrl_l or key == Key.cmd:
+    #     # print('按下ctrl或cmd')
+    #     ctrlOrCmdPressed = True
+
+    # if (hasattr(key, 'char') and key.char == '1') or str(key) == r"<49>":
+    #     print(key.vk)
+    #     print('1')
+    #     f1Pressed = True        
 
     # if (key == keyboard.Key.ctrl or keyboard.Key.cmd) and ctrlOrCmdPressed == False:
     #     print('按了CTRL')
@@ -151,14 +163,19 @@ def keyboardPressFunction(key):
                  
 
 def keyboardReleaseFunction(key):
-    global ctrlOrCmdPressed,f1Pressed,f2Pressed,f3Pressed,f4Pressed
-    if key == Key.ctrl_l or key == Key.cmd:
-        print('鬆開ctrl或cmd')
-        ctrlOrCmdPressed = False
+    if key in currentKeys:
+        print(f"{key} 被放開")
+        currentKeys.remove(key)    
+    # if any([key in hotkey for hotkey in hotkeys]):
+    #     currentKeys.remove(key)
+    # global ctrlOrCmdPressed,f1Pressed,f2Pressed,f3Pressed,f4Pressed
+    # if key == Key.ctrl_l or key == Key.cmd:
+    #     # print('鬆開ctrl或cmd')
+    #     ctrlOrCmdPressed = False
 
-    if hasattr(key, 'char') and key.char == '1':
-        print('鬆開1')
-        f1Pressed = False        
+    # if hasattr(key, 'char') and key.char == '1':
+    #     # print('鬆開1')
+    #     f1Pressed = False        
         
     # if (key == keyboard.Key.ctrl or keyboard.Key.cmd) and ctrlOrCmdPressed == False:
     #     # print('鬆開CTRL')
@@ -175,21 +192,24 @@ def keyboardReleaseFunction(key):
 
 def startKeyboardListener():
     # 创建一个键盘监听器
-    keyboard_listener = keyboard.Listener(on_press=keyboardPressFunction,on_release=keyboardReleaseFunction)
-    # 启动监听器
-    keyboard_listener.start()
+    with keyboard.Listener(on_press=keyboardPressFunction,on_release=keyboardReleaseFunction) as listener:
+        listener.join()
+    # keyboard_listener = keyboard.Listener(on_press=keyboardPressFunction,on_release=keyboardReleaseFunction)
+    # # 启动监听器
+    # keyboard_listener.start()
     # keyboard_listener.join()
     # 监听器在后台线程运行，这里没有使用join，而是通过定时事件来保持程序运行
-    root.after(1000, startKeyboardListener)  # 1秒重新启动监听器
+    # root.after(1000, startKeyboardListener)  # 1秒重新启动监听器
 
 def melonTikectClickOrderButton():
-    global mainWindowHandle
+    global mainWindowHandle,txtFileParams
     try:
+        driver.switch_to.window(mainWindowHandle)
         # 設置最長等待時間（例如10秒），直到該元素出現
         reservationBtn = findHTMLDomElement((By.CLASS_NAME, 'reservationBtn'),3600)
         dateTypeList = findHTMLDomElement((By.CLASS_NAME, 'type_list'))
         ## 特別注意要改這邊的時間單位
-        dateBtn = findHTMLDomElement((By.CSS_SELECTOR, 'li[data-perfday="20231119"] button'))
+        dateBtn = findHTMLDomElement((By.CSS_SELECTOR, 'li[data-perfday="'+txtFileParams['show_date']+'] button'))
         ## 特別注意要改這邊的時間單位
         
         # 此時元素已確認存在
@@ -205,11 +225,7 @@ def melonTikectClickOrderButton():
         reservationBtn[0].click()
         # 跳到彈出視窗
         WebDriverWait(driver, 10).until(EC.number_of_windows_to_be(2))
-        for handle in driver.window_handles:
-            if handle != mainWindowHandle:
-                # print('Switch to second window.')
-                driver.switch_to.window(handle)
-                break
+        driver.switch_to.window(driver.window_handles[-1])
     except TimeoutException:
         print("Element not found.")
 
@@ -218,11 +234,7 @@ def melonTikectBuyTicketInfo(version=1,buyTicketNum=1):
     global txtFileParams
     try:
         WebDriverWait(driver, 10).until(EC.number_of_windows_to_be(2))
-        for handle in driver.window_handles:
-            if handle != mainWindowHandle:
-                # print('Switch to second window.')
-                driver.switch_to.window(handle)
-                break
+        driver.switch_to.window(driver.window_handles[-1])
         driver.switch_to.frame("oneStopFrame")
         finishSeatJob = False
         clickTicketNum = 0
@@ -461,6 +473,11 @@ def findHTMLDomElement(elementLocator,timer=2,poll_frequency=0.5):
         print(f"Element {elementLocator} not found.")
         return None
     
+# 创建一个顶层窗口
+root = tk.Tk()
+root.withdraw()  # 隱藏主視窗
+root.call('wm', 'attributes', '.', '-topmost', True)    
+    
 ## 檢查必要的資料是否有輸入正確
 txtFileParams = {}
 try:
@@ -469,17 +486,19 @@ try:
             # 不讀取開頭結尾是#的文字，避免註解被使用
             if not line.strip().startswith('#'):
                 key, value = line.strip().split('=')
-                if key in ['phone','credit_card']:
+                if key in ['phone','credit_card','show_date']:
                     txtFileParams[key] = value
 except FileNotFoundError:
     messagebox.showinfo('缺少txt檔案','無法自動輸入訂購人資訊')
     root.destroy()
     exit()
 
-if 'phone' not in txtFileParams or 'credit_card' not in txtFileParams:
-    messagebox.showinfo('缺少訂購資訊','請先確認信用卡/手機是否照範例設定')
-    root.destroy()
-    exit()
+for key in ['phone','credit_card','show_date']:
+    if key not in txtFileParams:
+        print(f"個人資訊中的'{key}'沒有找到，請參照範例填寫!")
+        messagebox.showinfo('信用卡僅支援VISA/MASTER','請先確認信用卡是否照範例設定')
+        root.destroy()
+        exit()
 
 if txtFileParams['credit_card'] not in ['VISA','MASTER']:
     messagebox.showinfo('信用卡僅支援VISA/MASTER','請先確認信用卡是否照範例設定')
@@ -501,24 +520,14 @@ options.add_experimental_option("prefs", prefs)
 url = 'https://tkglobal.melon.com/main/index.htm?langCd=CN&'
 
 driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()),options=options)
-# driver = webdriver.Chrome()
 driver.get(url)
 # 主視窗
 mainWindowHandle = driver.current_window_handle 
-# title = driver.title
-# 搜尋是否有預定按鈕
 
-startKeyboardListener()
-# 启动键盘监听器线程作为守护线程
-# keyboard_thread = threading.Thread(target=start_keyboard_listener)
-# keyboard_thread.daemon = True
-# keyboard_thread.start()
-# 进入 tkinter 主循环
-root.mainloop()
+with keyboard.Listener(on_press=keyboardPressFunction,on_release=keyboardReleaseFunction) as listener:
+    listener.join()
 
-# time.sleep(10)
-# # 退出WebDriver
-# driver.quit()
-# root.destroy()
-# exit()
-
+messagebox.showinfo('結束程式','你關閉了程式')
+driver.quit()
+root.destroy()
+exit()
