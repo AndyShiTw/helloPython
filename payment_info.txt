@@ -9,4 +9,4 @@
 #show_date=20230924
 phone=886928780630
 credit_card=MASTER
-show_date=20231008
+show_date=20231119

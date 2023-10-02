@@ -35,6 +35,8 @@ setattr(numpy, "asscalar", patch_asscalar)
 # 當前已按下的按鍵集合
 currentKeys = set()
 
+cmdPressed = False
+
 def rgbStringToRGB(rgbString):
     match = re.match(r'rgba\((\d+),\s*(\d+),\s*(\d+),\s*(\d+(\.\d+)?)\)', rgbString)
     if match:
@@ -97,24 +99,33 @@ def hex_to_rgb(hex_value):
     return r, g, b    
 
 def keyboardPressFunction(key):
-    global currentKeys
+    global currentKeys,cmdPressed
     if key == keyboard.Key.esc:
-        print(f"{key} 被按下")
+        print(f"{key} 被按下，準備關閉程式")
         driver.quit()
-        messagebox.showinfo('結束程式','你關閉了程式')
-        root.quit()
+        # messagebox.showinfo('結束程式','你關閉了程式')
+        # root.quit()
         return False  # 結束監聽
     
     # 記錄這個按鈕按過，不要一直重複監聽，避免重複執行，直到他被放開
     if key not in currentKeys:
         # 這是新的鍵被按下
         print(f"{key} 被按下")
-        currentKeys.add(key)    
+        currentKeys.add(key)
+
+        if key == keyboard.Key.cmd:
+            cmdPressed = True
+
+    # mac要額外紀錄cmd按鈕是否被按下   
 
     if str(key) == r"<49>":
         melonTikectClickOrderButton()
     elif str(key) == r"<50>":
         melonTikectBuyTicketInfo(2,1)
+    elif key == keyboard.KeyCode.from_char('1') and cmdPressed == True:
+        melonTikectClickOrderButton()
+    elif key == keyboard.KeyCode.from_char('2') and cmdPressed == True:  
+        melonTikectBuyTicketInfo(2,1)      
 
     # if any([key in COMBO for COMBO in hotkeys]):
     #     currentKeys.add(key)
@@ -173,10 +184,12 @@ def keyboardPressFunction(key):
                  
 
 def keyboardReleaseFunction(key):
-    global currentKeys
+    global currentKeys,cmdPressed
     if key in currentKeys:
         # print(f"{key} 被放開")
         currentKeys.remove(key)    
+        if key == keyboard.Key.cmd:
+            cmdPressed = False
     # if any([key in hotkey for hotkey in hotkeys]):
     #     currentKeys.remove(key)
     # global ctrlOrCmdPressed,f1Pressed,f2Pressed,f3Pressed,f4Pressed
@@ -346,7 +359,8 @@ def melonTikectBuyTicketInfo(version=1,buyTicketNum=1):
                             if finishSeatJob == False:
                                 group[0].click()
                     if finishSeatJob == False:
-                        root.after(0, lambda:messagebox.showinfo('找不到座位','嘗試刷新了10次座位列表，但找不到座位，請重新搜尋座位'))
+                        print(f"重複找不到座位，請重新搜尋")
+                        # root.after(0, lambda:messagebox.showinfo('找不到座位','嘗試刷新了10次座位列表，但找不到座位，請重新搜尋座位'))
                         return None
             # else:
             #     # 先找出票種的顏色
@@ -495,9 +509,9 @@ def startKeyListener():
 
     
 # 创建一个顶层窗口
-root = tk.Tk()
-root.withdraw()  # 隱藏主視窗
-root.call('wm', 'attributes', '.', '-topmost', True)    
+# root = tk.Tk()
+# root.withdraw()  # 隱藏主視窗
+# root.call('wm', 'attributes', '.', '-topmost', True)    
     
 ## 檢查必要的資料是否有輸入正確
 txtFileParams = {}
@@ -510,20 +524,22 @@ try:
                 if key in ['phone','credit_card','show_date']:
                     txtFileParams[key] = value
 except FileNotFoundError:
-    messagebox.showinfo('缺少txt檔案','無法自動輸入訂購人資訊')
-    root.destroy()
+    print(f"缺少txt檔案")
+    # messagebox.showinfo('缺少txt檔案','無法自動輸入訂購人資訊')
+    # root.destroy()
     exit()
 
 for key in ['phone','credit_card','show_date']:
     if key not in txtFileParams:
         print(f"個人資訊中的'{key}'沒有找到，請參照範例填寫!")
-        messagebox.showinfo('信用卡僅支援VISA/MASTER','請先確認信用卡是否照範例設定')
-        root.destroy()
+        # messagebox.showinfo('信用卡僅支援VISA/MASTER','請先確認信用卡是否照範例設定')
+        # root.destroy()
         exit()
 
 if txtFileParams['credit_card'] not in ['VISA','MASTER']:
-    messagebox.showinfo('信用卡僅支援VISA/MASTER','請先確認信用卡是否照範例設定')
-    root.destroy()
+    print(f"信用卡僅支援VISA/MASTER")
+    # messagebox.showinfo('信用卡僅支援VISA/MASTER','請先確認信用卡是否照範例設定')
+    # root.destroy()
     exit()
 
 ## chrmoe模擬區塊
@@ -545,8 +561,9 @@ driver.get(url)
 # 主視窗
 mainWindowHandle = driver.current_window_handle 
 
-root.after_idle(lambda: threading.Thread(target=startKeyListener).start())
+startKeyListener()
+# root.after_idle(lambda: threading.Thread(target=startKeyListener).start())
 
-root.mainloop()
-root.destroy()
-sys.exit(0)
+# root.mainloop()
+# root.destroy()
+# sys.exit(0)
