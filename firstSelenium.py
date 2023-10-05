@@ -251,8 +251,8 @@ def melonTikectClickOrderButton():
         WebDriverWait(driver, 10).until(EC.number_of_windows_to_be(2))
         driver.switch_to.window(driver.window_handles[-1])
         # 點到驗證碼視窗，避免還要再用手點一次
-        captchaTxt = findHTMLDomElement((By.ID, 'label-for-captcha'))
-        captchaTxt[0].click()
+        # captchaTxt = findHTMLDomElement((By.ID, 'label-for-captcha'))
+        # captchaTxt[0].click()
     except TimeoutException:
         print("Element not found.")
 
@@ -557,6 +557,7 @@ options.add_experimental_option("prefs", prefs)
 url = 'https://tkglobal.melon.com/main/index.htm?langCd=CN&'
 
 driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()),options=options)
+driver.set_window_size(1440, 900)
 driver.get(url)
 # 主視窗
 mainWindowHandle = driver.current_window_handle 

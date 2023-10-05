@@ -7,6 +7,6 @@
 #phone=886928780123
 #credit_card=VISA
 #show_date=20230924
-phone=886928780630
-credit_card=MASTER
-show_date=20231119
+phone=886916311513
+credit_card=VISA
+show_date=20231216
