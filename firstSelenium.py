@@ -102,7 +102,7 @@ def keyboardPressFunction(key):
     global currentKeys,cmdPressed
     if key == keyboard.Key.esc:
         print(f"{key} 被按下，準備關閉程式")
-        driver.quit()
+        # driver.quit()
         # messagebox.showinfo('結束程式','你關閉了程式')
         # root.quit()
         return False  # 結束監聽
