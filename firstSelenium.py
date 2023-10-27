@@ -17,6 +17,10 @@ from selenium.webdriver.chrome.service import Service as ChromeService
 from webdriver_manager.chrome import ChromeDriverManager
 from datetime import datetime
 import sys
+import base64
+# from PIL import Image
+from io import BytesIO
+from ddddocr import DdddOcr
 
 
 ## 編譯說明
@@ -228,31 +232,66 @@ def startKeyboardListener():
 def melonTikectClickOrderButton():
     global mainWindowHandle,txtFileParams
     try:
-        driver.switch_to.window(mainWindowHandle)
-        # 設置最長等待時間（例如10秒），直到該元素出現
-        reservationBtn = findHTMLDomElement((By.CLASS_NAME, 'reservationBtn'),3600)
-        dateTypeList = findHTMLDomElement((By.CLASS_NAME, 'type_list'))
-        ## 特別注意要改這邊的時間單位
-        dateBtn = findHTMLDomElement((By.CSS_SELECTOR, 'li[data-perfday="'+txtFileParams['show_date']+'"] button'))
-        ## 特別注意要改這邊的時間單位
+        # driver.switch_to.window(mainWindowHandle)
+        # # 設置最長等待時間（例如10秒），直到該元素出現
+        # reservationBtn = findHTMLDomElement((By.CLASS_NAME, 'reservationBtn'),3600)
+        # dateTypeList = findHTMLDomElement((By.CLASS_NAME, 'type_list'))
+        # ## 特別注意要改這邊的時間單位
+        # dateBtn = findHTMLDomElement((By.CSS_SELECTOR, 'li[data-perfday="'+txtFileParams['show_date']+'"] button'))
+        # ## 特別注意要改這邊的時間單位
         
-        # 此時元素已確認存在
-        # print("Element exists.")
-        # 將日期改為條列式
-        dateTypeList[0].click()
-        # 點選日期
-        dateBtn[0].click()
-        # 點選時間
-        timeBtn = findHTMLDomElement((By.CSS_SELECTOR, 'li.item_time.first'))
-        timeBtn[0].click()
-        # 點選預定
-        reservationBtn[0].click()
-        # 跳到彈出視窗
-        WebDriverWait(driver, 10).until(EC.number_of_windows_to_be(2))
-        driver.switch_to.window(driver.window_handles[-1])
-        # 點到驗證碼視窗，避免還要再用手點一次
-        # captchaTxt = findHTMLDomElement((By.ID, 'label-for-captcha'))
-        # captchaTxt[0].click()
+        # # 此時元素已確認存在
+        # # print("Element exists.")
+        # # 將日期改為條列式
+        # dateTypeList[0].click()
+        # # 點選日期
+        # dateBtn[0].click()
+        # # 點選時間
+        # timeBtn = findHTMLDomElement((By.CSS_SELECTOR, 'li.item_time.first'))
+        # timeBtn[0].click()
+        # # 點選預定
+        # reservationBtn[0].click()
+        # # 跳到彈出視窗
+        # WebDriverWait(driver, 10).until(EC.number_of_windows_to_be(2))
+        # driver.switch_to.window(driver.window_handles[-1])
+        # # 點到驗證碼視窗，避免還要再用手點一次
+        # captchaInput = findHTMLDomElement((By.ID, 'label-for-captcha'),10)
+        # captchaImg = findHTMLDomElement((By.ID, 'captchaImg'),10)
+        try:
+            # driver.set_script_timeout(10)
+            # form_verifyCode_base64 = driver.execute_async_script("""
+            #     var canvas = document.createElement('canvas');
+            #     var context = canvas.getContext('2d');
+            #     var img = document.getElementById('%s');
+            #     if(img!=null) {
+            #     canvas.height = img.naturalHeight;
+            #     canvas.width = img.naturalWidth;
+            #     context.drawImage(img, 0, 0);
+            #     callback = arguments[arguments.length - 1];
+            #     callback(canvas.toDataURL()); }
+            #     """ % ('#captchaImg'))
+            # img_base64 = base64.b64decode(captchaImg[0].get_attribute('src').split(',')[1])
+            # image = Image.open(BytesIO(img_base64))
+            # # 將PIL圖像對象轉換為PNG格式的bytes對象
+            # buffered = BytesIO()
+            # image.save(buffered, format="PNG")
+            # img_as_bytes = buffered.getvalue()
+
+            img_base64 = "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"
+            image_data = base64.b64decode(img_base64)
+            ocr = DdddOcr()
+            # with open("output.png", "wb") as f:
+            #     f.write(image_data)
+
+            with open("test.png", 'rb') as f:
+                image = f.read()
+
+            res = ocr.classification(image)
+            print(res)
+            # ocr_answer = ocr.classification(img_as_bytes)
+            # print(ocr_answer)
+        except Exception as exc:
+            print("canvas exception:", str(exc))
     except TimeoutException:
         print("Element not found.")
 
@@ -556,11 +595,11 @@ options.add_experimental_option("prefs", prefs)
 
 url = 'https://tkglobal.melon.com/main/index.htm?langCd=CN&'
 
-driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()),options=options)
-driver.set_window_size(1440, 900)
-driver.get(url)
-# 主視窗
-mainWindowHandle = driver.current_window_handle 
+# driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()),options=options)
+# driver.set_window_size(1440, 900)
+# driver.get(url)
+# # 主視窗
+# mainWindowHandle = driver.current_window_handle 
 
 startKeyListener()
 # root.after_idle(lambda: threading.Thread(target=startKeyListener).start())
